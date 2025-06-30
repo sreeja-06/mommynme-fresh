@@ -6,7 +6,7 @@ import { supabase } from '../utils/supabaseClient';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Home' },
-  { path: '/products', label: 'Shop Now' },
+  { path: '/products', label: 'Catalogue' },
   { path: '/about', label: 'About' },
   { path: '/contact', label: 'Contact' },
 ] as const;
@@ -16,6 +16,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -39,8 +40,16 @@ export default function Navbar() {
 
   const isActive = (path: string) => location.pathname === path;
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 100);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <nav className="w-full bg-transparent  rounded-t-xl px-4 py-2 fixed top-0 left-0 z-50">
+    <nav className={`w-full rounded-t-xl px-4 py-2 fixed left-0 z-50 top-10 transition-colors duration-300 ${scrolled ? 'bg-transparent backdrop-blur' : 'bg-white'}`}>
       <div className="max-w-7xl mx-auto flex  justify-between">
         {/* Logo & Title */}
         <div className="flex items-center space-x-4">

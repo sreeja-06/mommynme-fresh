@@ -8,6 +8,7 @@ import LoginSignupPage from "./pages/LoginSignupPage";
 import NotFound from "./pages/NotFound";
 import { HashLoader } from 'react-spinners';
 import { supabase } from "./utils/supabaseClient";
+import Banner from './components/Banner';
 
 // Lazy-loaded components
 const Home = lazy(() => import("./pages/Home"));
@@ -53,10 +54,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => {
+  const location = useLocation();
+  const isAdminPanel = location.pathname.startsWith('/admin');
+
   return (
     <CartProvider>
       <div className="min-h-screen flex flex-col">
         <GlobalLoader />
+        {/* Show Banner on all pages except AdminPanel */}
+        {!isAdminPanel && <Banner />}
+        {/* Navbar should come after Banner */}
         <Navbar />
         <main className="flex-grow">
           <ScrollToTop />
@@ -72,7 +79,7 @@ const App = () => {
               <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<LoginSignupPage />} />
               {/* Admin Panel Route */}
-              <Route path="/AdminPanel" element={<AdminPanel />} />
+              <Route path="/admin/*" element={<AdminPanel />} />
               {/* Protected Routes */}
               <Route path="/profile" element={
                 <ProtectedRoute>

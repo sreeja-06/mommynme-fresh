@@ -5,6 +5,7 @@ import psycopg2
 from psycopg2 import sql
 from dotenv import load_dotenv
 import logging
+from contact import contact_bp
 
 # Load environment variables from .env file
 load_dotenv()
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:5173"])
+app.register_blueprint(contact_bp)
 
 try:
     conn = psycopg2.connect(

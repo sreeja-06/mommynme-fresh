@@ -1,7 +1,41 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Mail, MapPin, Phone, MessageSquare, Instagram, Heart, Circle } from 'lucide-react';
 
 export default function Contact() {
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setSuccess('');
+    setError('');
+    try {
+      const res = await fetch('http://localhost:5000/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSuccess('Thank you for reaching out! We will get back to you soon.');
+        setForm({ name: '', email: '', subject: '', message: '' });
+      } else {
+        setError(data.error || 'Something went wrong.');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ backgroundColor: '#FFF9F9' }} className="min-h-screen">
       {/* Hero Section with cozy yarn texture */}
@@ -33,7 +67,7 @@ export default function Contact() {
               <Heart className="w-6 h-6 mr-2 text-pink-500" />
               Stitch Us a Message
             </h2>
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                   <span className="w-2 h-2 bg-purple-400 rounded-full mr-2"></span>
@@ -41,8 +75,12 @@ export default function Contact() {
                 </label>
                 <input
                   type="text"
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
                   className="w-full px-4 py-3 border border-purple-100 rounded-lg focus:ring-2 focus:ring-purple-300 focus:border-transparent bg-purple-50"
                   placeholder="Your beautiful name"
+                  required
                 />
               </div>
               <div>
@@ -52,8 +90,12 @@ export default function Contact() {
                 </label>
                 <input
                   type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
                   className="w-full px-4 py-3 border border-purple-100 rounded-lg focus:ring-2 focus:ring-purple-300 focus:border-transparent bg-purple-50"
                   placeholder="your.cozy@email.com"
+                  required
                 />
               </div>
               <div>
@@ -63,8 +105,12 @@ export default function Contact() {
                 </label>
                 <input
                   type="text"
+                  name="subject"
+                  value={form.subject}
+                  onChange={handleChange}
                   className="w-full px-4 py-3 border border-purple-100 rounded-lg focus:ring-2 focus:ring-purple-300 focus:border-transparent bg-purple-50"
                   placeholder="Your crochet inquiry..."
+                  required
                 />
               </div>
               <div>
@@ -74,17 +120,24 @@ export default function Contact() {
                 </label>
                 <textarea
                   rows={5}
+                  name="message"
+                  value={form.message}
+                  onChange={handleChange}
                   className="w-full px-4 py-3 border border-purple-100 rounded-lg focus:ring-2 focus:ring-purple-300 focus:border-transparent bg-purple-50"
                   placeholder="Share your thoughts... each word is a stitch in our conversation"
+                  required
                 />
               </div>  
               <button
                 type="submit"
                 className="w-full bg-gradient-to-r from-purple-400 to-pink-400 text-white py-3 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all shadow-md hover:shadow-lg flex items-center justify-center mt-0"
+                disabled={loading}
               >
                 <Circle className="w-5 h-5 mr-2" />
-                Weave Your Message
+                {loading ? 'Sending...' : 'Weave Your Message'}
               </button>
+              {success && <div className="text-green-600 text-center mt-2">{success}</div>}
+              {error && <div className="text-red-600 text-center mt-2">{error}</div>}
             </form>
           </div>
 

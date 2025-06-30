@@ -306,7 +306,7 @@ const ProfilePage: React.FC = () => {
                       onClick={() => navigate('/products')}
                       className="mt-4 w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                     >
-                      Shop Now
+                      View our Catalogue
                     </button>
                   </div>
                 ))}

@@ -266,7 +266,7 @@ export default function Home() {
                 to="/products"
                 className="inline-flex bg-pink-600 text-white px-6 py-3 sm:px-8 sm:py-4 rounded-full font-semibold items-center space-x-2 hover:bg-pink-700 transition-all duration-300 hover:scale-105"
               >
-                <span>Shop Now</span>
+                <span>View our Catalogue</span>
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </div>
