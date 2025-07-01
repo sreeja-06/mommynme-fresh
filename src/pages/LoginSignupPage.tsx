@@ -28,42 +28,39 @@ const LoginSignupPage: React.FC = () => {
     setFormState({ ...formState, error: "", loading: true });
 
     try {
-      // Replace with your authentication API calls
+      // Hardcoded admin login
+      if (isLogin && email === "admin@mommynme.in" && password === "mommynme2025") {
+        navigate("/AdminPanel");
+        setFormState((prev) => ({ ...prev, loading: false }));
+        return;
+      }
+      const url = isLogin
+        ? "http://localhost:5000/api/auth/login"
+        : "http://localhost:5000/api/auth/signup";
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Authentication failed. Please try again.");
+      }
       if (isLogin) {
-        // Example login API call:
-        // const response = await fetch('/api/auth/login', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ email, password })
-        // });
-        // const data = await response.json();
-        // if (!response.ok) throw new Error(data.message);
-        
-        // For demo purposes, simulate successful login
-        console.log("Login attempt with:", { email, password });
         navigate("/");
       } else {
-        // Example signup API call:
-        // const response = await fetch('/api/auth/signup', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ email, password })
-        // });
-        // const data = await response.json();
-        // if (!response.ok) throw new Error(data.message);
-        
-        // For demo purposes, simulate successful signup
-        console.log("Signup attempt with:", { email, password });
         alert("Signup successful! Please check your email for confirmation.");
         navigate("/");
       }
     } catch (error: any) {
-      setFormState({ 
-        ...formState, 
+      setFormState({
+        ...formState,
         error: error.message || "Authentication failed. Please try again.",
-        loading: false 
+        loading: false,
       });
+      return;
     }
+    setFormState((prev) => ({ ...prev, loading: false }));
   };
 
   return (
@@ -163,14 +160,6 @@ const LoginSignupPage: React.FC = () => {
           >
             {isLogin ? "Need an account? Sign up" : "Already have an account? Sign in"}
           </button>
-          <div className="mt-4">
-            <a
-              href="/AdminPanel"
-              className="text-indigo-600 hover:text-indigo-800 underline font-semibold"
-            >
-              {isLogin ? "Sign in as Admin" : "Sign up as Admin"}
-            </a>
-          </div>
         </div>
       </motion.div>
 

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Link, Route, Routes, useNavigate } from "react-router-dom";
 import { FiHome, FiBox, FiUsers, FiSettings, FiLogOut, FiPlus, FiEdit, FiTrash2 } from "react-icons/fi";
-import UserList from "../components/UserList";
 
 // --- Types ---
 type Product = {
@@ -45,24 +44,80 @@ const initialProducts: Product[] = [
 ];
 
 // --- Product Provider ---
+const BACKEND_URL = "http://localhost:5000";
+// Map frontend category to backend table name
+const CATEGORY_TO_TABLE: Record<string, string> = {
+  "bags_purse": "bags_purse",
+  "earrings": "earrings",
+  "flower_bouquet": "flower_bouquet",
+  "flower_pots": "flower_pots",
+  "hair_accessories": "hair_accessories",
+  "keychains_plushies": "keychains_plushies",
+  "mirror": "mirror"
+};
+
 const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [products, setProducts] = React.useState<Product[]>(initialProducts);
+  const [products, setProducts] = React.useState<Product[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-  const addProduct = (p: Omit<Product, "id">) => {
-    setProducts((prev) => [...prev, { ...p, id: Date.now() }]);
+  // Fetch all products from backend
+  React.useEffect(() => {
+    fetch(`${BACKEND_URL}/products`)
+      .then(res => res.json())
+      .then(data => {
+        // Flatten all products from all tables into a single array
+        const allProducts = Object.entries(data).flatMap(([table, items]) =>
+          (items as any[]).map(item => ({ ...item, category: table }))
+        );
+        setProducts(allProducts);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  // Add product
+  const addProduct = async (p: Omit<Product, "id">) => {
+    const table = CATEGORY_TO_TABLE[p.category] || p.category;
+    const res = await fetch(`${BACKEND_URL}/products/${table}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(p),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setProducts(prev => [...prev, { ...p, ...data.product, category: table }]);
+    }
   };
 
-  const updateProduct = (id: number, p: Omit<Product, "id">) => {
-    setProducts((prev) => prev.map((prod) => (prod.id === id ? { ...p, id } : prod)));
+  // Update product
+  const updateProduct = async (id: number, p: Omit<Product, "id">) => {
+    const table = CATEGORY_TO_TABLE[p.category] || p.category;
+    const res = await fetch(`${BACKEND_URL}/products/${table}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(p),
+    });
+    if (res.ok) {
+      setProducts(prev => prev.map(prod => (prod.id === id ? { ...p, id, category: table } : prod)));
+    }
   };
 
-  const deleteProduct = (id: number) => {
-    setProducts((prev) => prev.filter((prod) => prod.id !== id));
+  // Delete product
+  const deleteProduct = async (id: number) => {
+    const prod = products.find(p => p.id === id);
+    if (!prod) return;
+    const table = CATEGORY_TO_TABLE[prod.category] || prod.category;
+    const res = await fetch(`${BACKEND_URL}/products/${table}/${id}`, {
+      method: "DELETE"
+    });
+    if (res.ok) {
+      setProducts(prev => prev.filter(prod => prod.id !== id));
+    }
   };
 
   return (
     <ProductContext.Provider value={{ products, addProduct, updateProduct, deleteProduct }}>
-      {children}
+      {loading ? <div>Loading...</div> : children}
     </ProductContext.Provider>
   );
 };
@@ -101,28 +156,60 @@ const Sidebar: React.FC<{ onNavigate: (section: string) => void; active: string 
   </aside>
 );
 
+// --- Registered Users (UserList) ---
+const UserList: React.FC = () => {
+  const [users, setUsers] = React.useState<{ id: number; email: string }[]>([]);
+
+  React.useEffect(() => {
+    fetch("http://localhost:5000/api/auth/users")
+      .then(res => res.json())
+      .then(data => setUsers(data));
+  }, []);
+
+  return (
+    <div className="bg-white rounded-xl shadow p-6">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2"><FiUsers /> Registered Users</h2>
+      <div className="overflow-x-auto rounded-lg">
+        <table className="min-w-full bg-white rounded-lg">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">ID</th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">Email</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map(u => (
+              <tr key={u.id}>
+                <td className="px-4 py-3">{u.id}</td>
+                <td className="px-4 py-3">{u.email}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 // --- Dashboard Home ---
-const DashboardHome: React.FC<{ userCount: number }> = ({ userCount }) => {
-  const { products } = useProducts();
+const DashboardHome: React.FC = () => {
+  const [stats, setStats] = React.useState<{ total_products: number; total_users: number }>({ total_products: 0, total_users: 0 });
+  React.useEffect(() => {
+    fetch("http://localhost:5000/products/count")
+      .then(res => res.json())
+      .then(data => setStats(data));
+  }, []);
   return (
     <div className="bg-white rounded-xl shadow p-6 mb-8">
       <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2"><FiHome /> Dashboard</h2>
       <div className="flex flex-col sm:flex-row gap-6">
         <div className="flex-1 bg-gray-100 rounded-lg p-4 text-center shadow">
-          <div className="text-3xl font-bold text-pink-700">{products.length}</div>
+          <div className="text-3xl font-bold text-pink-700">{stats.total_products}</div>
           <div className="text-gray-600 mt-2">Total Products</div>
         </div>
         <div className="flex-1 bg-blue-100 rounded-lg p-4 text-center shadow">
-          <div className="text-3xl font-bold text-blue-700">{userCount}</div>
+          <div className="text-3xl font-bold text-blue-700">{stats.total_users}</div>
           <div className="text-gray-600 mt-2">Total Users</div>
-        </div>
-        <div className="flex-1 bg-green-100 rounded-lg p-4 text-center shadow">
-          <div className="text-3xl font-bold text-green-700">{products.filter(p => p.status === "In Stock").length}</div>
-          <div className="text-gray-600 mt-2">In Stock</div>
-        </div>
-        <div className="flex-1 bg-red-100 rounded-lg p-4 text-center shadow">
-          <div className="text-3xl font-bold text-red-700">{products.filter(p => p.status === "Out of Stock").length}</div>
-          <div className="text-gray-600 mt-2">Out of Stock</div>
         </div>
       </div>
     </div>
@@ -251,22 +338,12 @@ const Settings: React.FC = () => (
 // --- Main Admin Panel ---
 const AdminPanel: React.FC = () => {
   const [section, setSection] = useState("dashboard");
-  const [userCount, setUserCount] = useState(0);
-
-  // Fetch user count for dashboard
-  React.useEffect(() => {
-    fetch("http://localhost:5000/users")
-      .then(res => res.json())
-      .then(data => setUserCount(data.length))
-      .catch(() => setUserCount(0));
-  }, []);
-
   return (
     <ProductProvider>
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar onNavigate={setSection} active={section} />
         <main className="flex-1 p-8">
-          {section === "dashboard" && <DashboardHome userCount={userCount} />}
+          {section === "dashboard" && <DashboardHome />}
           {section === "products" && <ManageProducts />}
           {section === "users" && <UserList />}
           {section === "settings" && <Settings />}
