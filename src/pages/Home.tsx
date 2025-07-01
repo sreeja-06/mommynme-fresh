@@ -1,10 +1,9 @@
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import { CartContext } from "../components/CartContext";
-import { ArrowRight, ShoppingCart, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import { MediaCoverageSection } from "../components/MediaCoverageSection";
 import { BrandCollaborationSection } from "../components/BrandCollaborationSection";
 import landingPoster from '../assets/landing_poster_pc.png';
@@ -39,10 +38,16 @@ interface Product {
   image: string | null;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  image?: string | null;
+}
+
 export default function Home() {
   const [poster, setPoster] = useState<Poster | null>(null);
   const [bestSellers, setBestSellers] = useState<BestSeller[]>([]);
-  const [categories, setCategories] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -60,144 +65,93 @@ export default function Home() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Example data to replace Supabase calls
-  const examplePoster: Poster = {
-    id: "1",
-    title: "Summer Collection 2023",
-    description: "Discover our new summer collection with exclusive designs",
-    image_url: posterImage,
-    image2: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b",
-    image3: "https://images.unsplash.com/photo-1483985988355-763728e1935b"
-  };
-
-  const exampleBestSellers: BestSeller[] = [
-    {
-      id: "1",
-      title: "Premium Yoga Mat",
-      description: "Eco-friendly yoga mat with perfect grip",
-      price: 2499,
-      image_url: "https://images.unsplash.com/photo-1571902943202-507ec2618e8f",
-      image2: "https://images.unsplash.com/photo-1545205597-3d9d02c29597",
-      image3: "https://images.unsplash.com/photo-1593757147298-e064ed1419e5",
-      offer: "15",
-      category: "Fitness",
-      created_at: "2023-06-15",
-      quantity: 20
-    },
-    {
-      id: "2",
-      title: "Wireless Earbuds",
-      description: "Crystal clear sound with noise cancellation",
-      price: 1799,
-      image_url: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df",
-      image2: "https://images.unsplash.com/photo-1593784991095-a205069470b6",
-      image3: "https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb",
-      offer: "10",
-      category: "Electronics",
-      created_at: "2023-07-10",
-      quantity: 15
-    },
-    {
-      id: "3",
-      title: "Organic Cotton T-Shirt",
-      description: "100% organic cotton, comfortable fit",
-      price: 899,
-      image_url: "https://images.unsplash.com/photo-1576566588028-4147f3842f27",
-      image2: "https://images.unsplash.com/photo-1527719327859-c6ce80353573",
-      image3: "",
-      category: "Clothing",
-      created_at: "2023-05-22",
-      quantity: 30,
-      offer: ""
-    },
-    {
-      id: "4",
-      title: "Stainless Steel Water Bottle",
-      description: "Keeps drinks cold for 24 hours",
-      price: 649,
-      image_url: "https://images.unsplash.com/photo-1602143407151-7111542de6e8",
-      image2: "https://images.unsplash.com/photo-1600166898405-da9535204843",
-      image3: "https://images.unsplash.com/photo-1600267165477-6d4cc741b379",
-      offer: "20",
-      category: "Accessories",
-      created_at: "2023-08-05",
-      quantity: 25
-    }
-  ];
-
-  const exampleCategories: Product[] = [
-    {
-      id: "1",
-      category: "Earrings",
-      image: "https://images.unsplash.com/photo-1517841905240-472988babdf9"
-    },
-    {
-      id: "2",
-      category: "Hair accessories",
-      image: "https://images.unsplash.com/photo-1512436991641-6745cdb1723f"
-    },
-    {
-      id: "3",
-      category: "Keychains and Plushies",
-      image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb"
-    },
-    {
-      id: "4",
-      category: "Flower Bouquet",
-      image: "https://images.unsplash.com/photo-1465101046530-73398c7f28ca"
-    },
-    {
-      id: "5",
-      category: "Flower Pots",
-      image: "https://images.unsplash.com/photo-1501004318641-b39e6451bec6"
-    },
-    {
-      id: "6",
-      category: "Mirror",
-      image: "https://images.unsplash.com/photo-1519125323398-675f0ddb6308"
-    },
-    {
-      id: "7",
-      category: "Bags and Purse",
-      image: "https://images.unsplash.com/photo-1512436991641-6745cdb1723f"
-    }
-  ];
-
   useEffect(() => {
+    const examplePoster: Poster = {
+      id: "1",
+      title: "Summer Collection 2023",
+      description: "Discover our new summer collection with exclusive designs",
+      image_url: posterImage,
+      image2: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b",
+      image3: "https://images.unsplash.com/photo-1483985988355-763728e1935b"
+    };
+
+    const exampleCategories: Product[] = [
+      {
+        id: "1",
+        category: "Earrings",
+        image: "https://images.unsplash.com/photo-1517841905240-472988babdf9"
+      },
+      {
+        id: "2",
+        category: "Hair accessories",
+        image: "https://images.unsplash.com/photo-1512436991641-6745cdb1723f"
+      },
+      {
+        id: "3",
+        category: "Keychains and Plushies",
+        image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb"
+      },
+      {
+        id: "4",
+        category: "Flower Bouquet",
+        image: "https://images.unsplash.com/photo-1465101046530-73398c7f28ca"
+      },
+      {
+        id: "5",
+        category: "Flower Pots",
+        image: "https://images.unsplash.com/photo-1501004318641-b39e6451bec6"
+      },
+      {
+        id: "6",
+        category: "Mirror",
+        image: "https://images.unsplash.com/photo-1519125323398-675f0ddb6308"
+      },
+      {
+        id: "7",
+        category: "Bags and Purse",
+        image: "https://images.unsplash.com/photo-1512436991641-6745cdb1723f"
+      }
+    ];
+
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // Replace these with your actual API calls
-        // Example:
-        // const posterResponse = await fetch('your-api-endpoint/poster');
-        // const posterData = await posterResponse.json();
-        // setPoster(posterData);
-        
-        // Using example data for now
+        // Fetch best sellers from backend API
+        const bestSellersResponse = await fetch('http://localhost:5000/best_sellers');
+        const bestSellersData = await bestSellersResponse.json();
+        // Map backend fields to frontend BestSeller interface
+        const mappedBestSellers = bestSellersData.map((item: any) => ({
+          id: item.id,
+          title: item.name, // Map 'name' to 'title'
+          description: item.description,
+          price: Number(item.price),
+          image_url: item.image_url,
+          image2: item.image2 || '',
+          image3: item.image3 || '',
+          offer: item.offer ? String(item.offer) : '',
+          category: item.category || '',
+          created_at: item.created_at || '',
+          quantity: item.quantity,
+        }));
+        setBestSellers(mappedBestSellers);
+        // Fetch categories from backend
+        const categoriesResponse = await fetch('http://localhost:5000/categories');
+        const categoriesData = await categoriesResponse.json();
+        // Optionally, add images for each category if you have them
+        setCategories(categoriesData);
         setPoster(examplePoster);
-        setBestSellers(exampleBestSellers);
-        setCategories(exampleCategories);
-        
       } catch (error) {
         console.error("Error fetching data:", error);
-        // Fallback to example data if API fails
         setPoster(examplePoster);
-        setBestSellers(exampleBestSellers);
-        setCategories(exampleCategories);
+        setBestSellers([]); // No demo data
+        setCategories([]);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
-  }, []);
-
-  const cartContext = useContext(CartContext);
-  if (!cartContext) {
-    throw new Error("CartContext must be used within a CartProvider");
-  }
-  const { addToCart } = cartContext;
+    // posterImage is a dependency for examplePoster
+  }, [posterImage]);
 
   const handleCategoryClick = (category: string) => {
     navigate(`/products?category=${encodeURIComponent(category)}`);
@@ -266,7 +220,7 @@ export default function Home() {
                 to="/products"
                 className="inline-flex bg-pink-600 text-white px-6 py-3 sm:px-8 sm:py-4 rounded-full font-semibold items-center space-x-2 hover:bg-pink-700 transition-all duration-300 hover:scale-105"
               >
-                <span>View our Catalogue</span>
+                <span>Shop Now</span>
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </div>
@@ -310,69 +264,83 @@ export default function Home() {
               View All <ChevronRight className="ml-1" />
             </Link>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-            {bestSellers.map((product) => {
-              const discountedPrice = calculateDiscountedPrice(
-                product.price,
-                product.offer
-              );
-
-              return (
-                <div
-                  key={product.id}
-                  className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 group"
-                >
-                  <div className="relative overflow-hidden">
-                    <img
-                      src={product.image_url}
-                      alt={product.title}
-                      className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
-                      onError={(e) => {
-                        e.currentTarget.src = "https://placehold.co/600x400";
-                      }}
-                    />
-                    {product.offer && (
-                      <div className="absolute top-4 right-4 bg-pink-600 text-white text-xs font-bold px-2 py-1 rounded-full">
-                        {product.offer}% OFF
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold mb-2 line-clamp-1">
-                      {product.title}
-                    </h3>
-
-                    <div className="flex items-center mb-4">
-                      <span className="text-lg font-bold text-pink-600">
-                        ₹{discountedPrice.toFixed(2)}
-                      </span>
-                      {product.offer && (
-                        <span className="text-sm text-gray-500 line-through ml-2">
-                          ₹{product.price.toFixed(2)}
-                        </span>
+          {bestSellers.length === 0 ? (
+            <div className="text-center text-gray-400 py-16 text-lg">
+              {/* Placeholder with example from database structure */}
+              <div className="flex flex-col items-center">
+                <img
+                  src="https://example.com/images/bottle.jpg"
+                  alt="Stainless Steel Water Bottle"
+                  className="w-40 h-40 object-cover rounded mb-4 border"
+                  onError={(e) => {
+                    e.currentTarget.src = "https://placehold.co/400x400";
+                  }}
+                />
+                <h3 className="text-xl font-semibold mb-2">Stainless Steel Water Bottle</h3>
+                <p className="text-gray-500 mb-2 text-center max-w-xs">
+                  Double-walled, leak-proof, and keeps drinks cold for 24 hours.
+                </p>
+                <div className="flex items-center mb-2">
+                  <span className="text-lg font-bold text-pink-600">₹899.00</span>
+                  <span className="text-sm text-gray-500 line-through ml-2">₹1,057.65</span>
+                  <span className="ml-2 bg-pink-600 text-white text-xs font-bold px-2 py-1 rounded-full">15% OFF</span>
+                </div>
+                <div className="flex gap-2 mb-2">
+                  <span className="w-5 h-5 rounded-full border bg-gray-200" style={{backgroundColor: '#C0C0C0'}} title="Silver"></span>
+                  <span className="w-5 h-5 rounded-full border bg-blue-500" title="Blue"></span>
+                  <span className="w-5 h-5 rounded-full border bg-black" title="Black"></span>
+                </div>
+                <span className="text-xs text-gray-400">Quantity: 200</span>
+              </div>
+              <div className="mt-8">Best sellers will appear here soon.</div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+              {bestSellers.map((product) => {
+                // Ensure price and offer are numbers
+                const price = Number(product.price);
+                const offer = product.offer ? Number(product.offer) : 0;
+                const discountedPrice = offer ? price - price * (offer / 100) : price;
+                return (
+                  <div
+                    key={product.id}
+                    className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 group"
+                  >
+                    <div className="relative overflow-hidden">
+                      <img
+                        src={product.image_url}
+                        alt={product.title}
+                        className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          e.currentTarget.src = "https://placehold.co/600x400";
+                        }}
+                      />
+                      {offer > 0 && (
+                        <div className="absolute top-4 right-4 bg-pink-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                          {offer}% OFF
+                        </div>
                       )}
                     </div>
-
-                    <button
-                      onClick={() =>
-                        addToCart({
-                          ...product,
-                          name: product.title,
-                          image: product.image_url,
-                        })
-                      }
-                      className="w-full flex items-center justify-center bg-pink-600 text-white py-2 rounded-md hover:bg-pink-700 transition-colors"
-                    >
-                      <ShoppingCart className="w-4 h-4 mr-2" />
-                      Add to Cart
-                    </button>
+                    <div className="p-6">
+                      <h3 className="text-xl font-semibold mb-2 line-clamp-1">
+                        {product.title}
+                      </h3>
+                      <div className="flex items-center mb-4">
+                        <span className="text-lg font-bold text-pink-600">
+                          ₹{discountedPrice.toFixed(2)}
+                        </span>
+                        {offer > 0 && (
+                          <span className="text-sm text-gray-500 line-through ml-2">
+                            ₹{price.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -382,18 +350,18 @@ export default function Home() {
           <h2 className="text-3xl sm:text-4xl font-bold text-center mb-8 md:mb-12">
             Shop by Category
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-6">
             {categories.map((category) => (
               <div
                 key={category.id}
                 className="group cursor-pointer"
-                onClick={() => handleCategoryClick(category.category)}
+                onClick={() => handleCategoryClick(category.name)}
               >
                 <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-3">
                   {category.image ? (
                     <img
                       src={category.image}
-                      alt={category.category}
+                      alt={category.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       onError={(e) => {
                         e.currentTarget.src = "https://placehold.co/600x400";
@@ -406,7 +374,7 @@ export default function Home() {
                   )}
                 </div>
                 <h3 className="text-lg font-medium text-center group-hover:text-pink-600">
-                  {category.category}
+                  {category.name}
                 </h3>
               </div>
             ))}

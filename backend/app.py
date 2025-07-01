@@ -1,13 +1,15 @@
 import os
 from flask import Flask, jsonify
 from flask_cors import CORS
-import psycopg2
 from psycopg2 import sql
-from dotenv import load_dotenv
 import logging
 from contact import contact_bp
+from best_seller import best_seller_bp
+from category import category_bp
+from db import cursor
 
 # Load environment variables from .env file
+from dotenv import load_dotenv
 load_dotenv()
 
 # Read database configuration from environment variables
@@ -24,19 +26,8 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:5173"])
 app.register_blueprint(contact_bp)
-
-try:
-    conn = psycopg2.connect(
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        host=DB_HOST,
-        port=DB_PORT
-    )
-    cursor = conn.cursor()
-except Exception as e:
-    logger.error(f"Database connection failed: {e}")
-    raise
+app.register_blueprint(best_seller_bp)
+app.register_blueprint(category_bp)
 
 tables = [
     "bags_purse", "earrings", "flower_bouquet",

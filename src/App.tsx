@@ -1,6 +1,5 @@
 import React, { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
-import { CartProvider } from "./components/CartContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import GlobalLoader from "./components/GlobalLoader";
@@ -58,42 +57,41 @@ const App = () => {
   const isAdminPanel = location.pathname.startsWith('/admin');
 
   return (
-    <CartProvider>
-      <div className="min-h-screen flex flex-col">
-        <GlobalLoader />
-        {/* Show Banner on all pages except AdminPanel */}
-        {!isAdminPanel && <Banner />}
-        {/* Navbar should come after Banner */}
-        <Navbar />
-        <main className="flex-grow">
-          <ScrollToTop />
-          <Suspense fallback={
-            <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-white/80 backdrop-blur-sm">
-              <HashLoader color="#4f46e5" size={50} />
-            </div>
-          }>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/login" element={<LoginSignupPage />} />
-              {/* Admin Panel Route */}
-              <Route path="/admin/*" element={<AdminPanel />} />
-              {/* Protected Routes */}
-              <Route path="/profile" element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              } />
-              {/* 404 Catch-all route - MUST be last */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </main>
-        <Footer />
-      </div>
-    </CartProvider>
+    <div className="min-h-screen flex flex-col">
+      <GlobalLoader />
+      {/* Show Banner on all pages except AdminPanel */}
+      {!isAdminPanel && <Banner />}
+      {/* Navbar should come after Banner */}
+      <Navbar />
+      <main className="flex-grow">
+        <ScrollToTop />
+        <Suspense fallback={
+          <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-white/80 backdrop-blur-sm">
+            <HashLoader color="#4f46e5" size={50} />
+          </div>
+        }>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/login" element={<LoginSignupPage />} />
+            {/* Admin Panel Route (case-insensitive and case-sensitive) */}
+            <Route path="/admin/*" element={<AdminPanel />} />
+            <Route path="/AdminPanel" element={<AdminPanel />} />
+            {/* Protected Routes */}
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            } />
+            {/* 404 Catch-all route - MUST be last */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </main>
+      <Footer />
+    </div>
   );
 };
 

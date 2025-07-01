@@ -98,15 +98,29 @@ export default function Products() {
   }, []);
 
   // Category list for filters (should match API keys)
-  const categoryList = [
-    "Earrings",
-    "Hair accessories",
-    "Keychains and Plushies",
-    "Flower Bouquet",
-    "Flower Pots",
-    "Mirror",
-    "Bags and Purse"
-  ];
+  const [categoryList, setCategoryList] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Fetch categories from backend
+    fetch('http://localhost:5000/categories')
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Failed to fetch categories');
+        const data = await res.json();
+        setCategoryList(data.map((cat: { name: string }) => cat.name));
+      })
+      .catch(() => {
+        // fallback to hardcoded if backend fails
+        setCategoryList([
+          "Earrings",
+          "Hair Accessories",
+          "Keychains and Plushies",
+          "Flower Bouquet",
+          "Flower Pots",
+          "Mirror",
+          "Bags and Purse"
+        ]);
+      });
+  }, []);
 
   // Map UI category names to API keys
   const categoryKeyMap: Record<string, string> = {
@@ -198,24 +212,21 @@ export default function Products() {
                   </svg>
                 </summary>
                 <div className="px-6 pb-4 space-y-2">
-                  {categoryList.map(category => (
-                    <label
-                      key={category}
-                      className="flex items-center gap-3 cursor-pointer text-gray-700 hover:text-purple-700"
-                    >
+                  {categoryList.map((cat) => (
+                    <label key={cat} className="flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={selectedCategories.includes(category)}
-                        onChange={() =>
-                          setSelectedCategories(prev =>
-                            prev.includes(category)
-                              ? prev.filter(c => c !== category)
-                              : [...prev, category]
-                          )
-                        }
-                        className="accent-purple-600 w-4 h-4 rounded border-gray-300 focus:ring-2 focus:ring-purple-400"
+                        checked={selectedCategories.includes(cat)}
+                        onChange={() => {
+                          setSelectedCategories((prev) =>
+                            prev.includes(cat)
+                              ? prev.filter((c) => c !== cat)
+                              : [...prev, cat]
+                          );
+                        }}
+                        className="form-checkbox h-4 w-4 text-purple-600 transition duration-150"
                       />
-                      <span className="text-base">{category.replace('_', ' ')}</span>
+                      <span className="ml-2 text-gray-700">{cat}</span>
                     </label>
                   ))}
                 </div>
