@@ -172,7 +172,7 @@ export default function Contact() {
                 <div>
                   <h3 className="font-semibold mb-1 text-pink-800">Warm Call</h3>
                   <p className="text-gray-700">
-                    +91 62894 70702<br />
+                    +91 99038 03629<br />
                     Monday - Saturday, 10am - 7pm IST
                   </p>
                 </div>
@@ -186,7 +186,7 @@ export default function Contact() {
                   <h3 className="font-semibold mb-1 text-green-800">Quick Stitch (WhatsApp)</h3>
                   <p className="text-gray-700">
                     <a href="https://wa.me/916289470702" className="text-green-600 hover:underline font-medium">
-                      +91 62894 70702
+                      +91 99038 03629
                     </a>
                   </p>
                 </div>
