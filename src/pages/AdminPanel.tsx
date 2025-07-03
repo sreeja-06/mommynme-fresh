@@ -6,11 +6,13 @@ import { FiHome, FiBox, FiUsers, FiSettings, FiLogOut, FiPlus, FiEdit, FiTrash2 
 type Product = {
   id: number;
   name: string;
-  category: string;
-  imageUrl: string;
-  price: number;
   description: string;
-  status: "In Stock" | "Out of Stock";
+  image_url: string;
+  price: number;
+  offer: number;
+  colors: string[];
+  quantity: number;
+  category?: string;
 };
 
 // --- Context for Products ---
@@ -22,28 +24,6 @@ type ProductContextType = {
 };
 const ProductContext = React.createContext<ProductContextType | undefined>(undefined);
 
-const initialProducts: Product[] = [
-  {
-    id: 1,
-    name: "Sample Product 1",
-    category: "Toys",
-    imageUrl: "",
-    price: 10,
-    description: "A fun toy for kids.",
-    status: "In Stock",
-  },
-  {
-    id: 2,
-    name: "Sample Product 2",
-    category: "Clothing",
-    imageUrl: "",
-    price: 20,
-    description: "Comfortable baby clothing.",
-    status: "Out of Stock",
-  },
-];
-
-// --- Product Provider ---
 const BACKEND_URL = "http://localhost:5000";
 // Map frontend category to backend table name
 const CATEGORY_TO_TABLE: Record<string, string> = {
@@ -56,6 +36,7 @@ const CATEGORY_TO_TABLE: Record<string, string> = {
   "mirror": "mirror"
 };
 
+// --- Product Provider ---
 const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = React.useState<Product[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -67,7 +48,7 @@ const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       .then(data => {
         // Flatten all products from all tables into a single array
         const allProducts = Object.entries(data).flatMap(([table, items]) =>
-          (items as any[]).map(item => ({ ...item, category: table }))
+          (items as Product[]).map(item => ({ ...item, category: table }))
         );
         setProducts(allProducts);
         setLoading(false);
@@ -77,25 +58,29 @@ const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   // Add product
   const addProduct = async (p: Omit<Product, "id">) => {
-    const table = CATEGORY_TO_TABLE[p.category] || p.category;
+    const table = CATEGORY_TO_TABLE[p.category!] || p.category!;
+    const payload = { ...p };
+    delete payload.category;
     const res = await fetch(`${BACKEND_URL}/products/${table}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(p),
+      body: JSON.stringify(payload),
     });
     if (res.ok) {
       const data = await res.json();
-      setProducts(prev => [...prev, { ...p, ...data.product, category: table }]);
+      setProducts(prev => [...prev, { ...data.product, category: table }]);
     }
   };
 
   // Update product
   const updateProduct = async (id: number, p: Omit<Product, "id">) => {
-    const table = CATEGORY_TO_TABLE[p.category] || p.category;
+    const table = CATEGORY_TO_TABLE[p.category!] || p.category!;
+    const payload = { ...p };
+    delete payload.category;
     const res = await fetch(`${BACKEND_URL}/products/${table}/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(p),
+      body: JSON.stringify(payload),
     });
     if (res.ok) {
       setProducts(prev => prev.map(prod => (prod.id === id ? { ...p, id, category: table } : prod)));
@@ -105,7 +90,7 @@ const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   // Delete product
   const deleteProduct = async (id: number) => {
     const prod = products.find(p => p.id === id);
-    if (!prod) return;
+    if (!prod || !prod.category) return;
     const table = CATEGORY_TO_TABLE[prod.category] || prod.category;
     const res = await fetch(`${BACKEND_URL}/products/${table}/${id}`, {
       method: "DELETE"
@@ -195,9 +180,20 @@ const UserList: React.FC = () => {
 const DashboardHome: React.FC = () => {
   const [stats, setStats] = React.useState<{ total_products: number; total_users: number }>({ total_products: 0, total_users: 0 });
   React.useEffect(() => {
+    // Fetch product count
     fetch("http://localhost:5000/products/count")
       .then(res => res.json())
-      .then(data => setStats(data));
+      .then(data => {
+        // Fetch user count after product count
+        fetch("http://localhost:5000/api/auth/usercount")
+          .then(res2 => res2.json())
+          .then(data2 => {
+            setStats({
+              total_products: data.total_products || 0,
+              total_users: data2.user_count || 0
+            });
+          });
+      });
   }, []);
   return (
     <div className="bg-white rounded-xl shadow p-6 mb-8">
@@ -223,18 +219,39 @@ type ProductFormProps = {
   onClose: () => void;
   submitLabel: string;
 };
+const TABLE_OPTIONS = [
+  "bags_purse",
+  "earrings",
+  "flower_bouquet",
+  "flower_pots",
+  "hair_accessories",
+  "keychains_plushies",
+  "mirror"
+];
+
 const ProductForm: React.FC<ProductFormProps> = ({ initial, onSubmit, onClose, submitLabel }) => {
   const [name, setName] = useState(initial?.name || "");
-  const [category, setCategory] = useState(initial?.category || "");
-  const [imageUrl, setImageUrl] = useState(initial?.imageUrl || "");
-  const [price, setPrice] = useState(initial?.price?.toString() || "");
   const [description, setDescription] = useState(initial?.description || "");
-  const [status, setStatus] = useState<Product["status"]>(initial?.status || "In Stock");
+  const [image_url, setImageUrl] = useState(initial?.image_url || "");
+  const [price, setPrice] = useState(initial?.price?.toString() || "");
+  const [offer, setOffer] = useState(initial?.offer?.toString() || "0");
+  const [colors, setColors] = useState(initial?.colors?.join(",") || "");
+  const [quantity, setQuantity] = useState(initial?.quantity?.toString() || "1");
+  const [category, setCategory] = useState(initial?.category || TABLE_OPTIONS[0]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !category || !price || !description) return;
-    onSubmit({ name, category, imageUrl, price: Number(price), description, status });
+    onSubmit({
+      name,
+      description,
+      image_url,
+      price: Number(price),
+      offer: Number(offer),
+      colors: colors.split(',').map(c => c.trim()).filter(Boolean),
+      quantity: Number(quantity),
+      category
+    });
     onClose();
   };
 
@@ -244,29 +261,38 @@ const ProductForm: React.FC<ProductFormProps> = ({ initial, onSubmit, onClose, s
         <h3 className="text-xl font-bold mb-4">{submitLabel}</h3>
         <div className="mb-3">
           <label className="block mb-1 font-medium">Name</label>
-          <input className="border rounded px-3 py-2 w-full" value={name} onChange={e => setName(e.target.value)} required />
-        </div>
-        <div className="mb-3">
-          <label className="block mb-1 font-medium">Category</label>
-          <input className="border rounded px-3 py-2 w-full" value={category} onChange={e => setCategory(e.target.value)} required />
-        </div>
-        <div className="mb-3">
-          <label className="block mb-1 font-medium">Image URL</label>
-          <input className="border rounded px-3 py-2 w-full" value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
-        </div>
-        <div className="mb-3">
-          <label className="block mb-1 font-medium">Price</label>
-          <input type="number" className="border rounded px-3 py-2 w-full" value={price} onChange={e => setPrice(e.target.value)} required />
+          <input className="border rounded px-3 py-2 w-full" value={name} onChange={e => setName(e.target.value)} required placeholder="Product name" title="Product name" />
         </div>
         <div className="mb-3">
           <label className="block mb-1 font-medium">Description</label>
-          <textarea className="border rounded px-3 py-2 w-full" value={description} onChange={e => setDescription(e.target.value)} required />
+          <textarea className="border rounded px-3 py-2 w-full" value={description} onChange={e => setDescription(e.target.value)} required placeholder="Description" title="Description" />
         </div>
         <div className="mb-3">
-          <label className="block mb-1 font-medium">Status</label>
-          <select className="border rounded px-3 py-2 w-full" value={status} onChange={e => setStatus(e.target.value as Product["status"]) }>
-            <option value="In Stock">In Stock</option>
-            <option value="Out of Stock">Out of Stock</option>
+          <label className="block mb-1 font-medium">Image URL</label>
+          <input className="border rounded px-3 py-2 w-full" value={image_url} onChange={e => setImageUrl(e.target.value)} placeholder="Image URL" title="Image URL" />
+        </div>
+        <div className="mb-3">
+          <label className="block mb-1 font-medium">Price</label>
+          <input type="number" className="border rounded px-3 py-2 w-full" value={price} onChange={e => setPrice(e.target.value)} required placeholder="Price" title="Price" />
+        </div>
+        <div className="mb-3">
+          <label className="block mb-1 font-medium">Offer (%)</label>
+          <input type="number" className="border rounded px-3 py-2 w-full" value={offer} onChange={e => setOffer(e.target.value)} min="0" placeholder="Offer" title="Offer" />
+        </div>
+        <div className="mb-3">
+          <label className="block mb-1 font-medium">Colors (comma separated)</label>
+          <input className="border rounded px-3 py-2 w-full" value={colors} onChange={e => setColors(e.target.value)} placeholder="red, blue, green" title="Colors" />
+        </div>
+        <div className="mb-3">
+          <label className="block mb-1 font-medium">Quantity</label>
+          <input type="number" className="border rounded px-3 py-2 w-full" value={quantity} onChange={e => setQuantity(e.target.value)} min="1" required placeholder="Quantity" title="Quantity" />
+        </div>
+        <div className="mb-3">
+          <label className="block mb-1 font-medium">Category (Table Name)</label>
+          <select className="border rounded px-3 py-2 w-full" value={category} onChange={e => setCategory(e.target.value)} required title="Category">
+            {TABLE_OPTIONS.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
           </select>
         </div>
         <div className="flex gap-2 mt-4">
@@ -296,9 +322,12 @@ const ManageProducts: React.FC = () => {
             <tr className="bg-gray-100">
               <th className="px-4 py-3 text-left font-semibold text-gray-700">Image</th>
               <th className="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">Category</th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">Description</th>
               <th className="px-4 py-3 text-left font-semibold text-gray-700">Price</th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">Offer</th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">Colors</th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">Quantity</th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">Category</th>
               <th className="px-4 py-3 text-left font-semibold text-gray-700">Actions</th>
             </tr>
           </thead>
@@ -306,12 +335,15 @@ const ManageProducts: React.FC = () => {
             {products.map((p, idx) => (
               <tr key={p.id} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                 <td className="px-4 py-3">
-                  {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="w-12 h-12 object-cover rounded" /> : <span className="text-gray-400">No Image</span>}
+                  {p.image_url ? <img src={p.image_url} alt={p.name} className="w-12 h-12 object-cover rounded" /> : <span className="text-gray-400">No Image</span>}
                 </td>
                 <td className="px-4 py-3">{p.name}</td>
-                <td className="px-4 py-3">{p.category}</td>
+                <td className="px-4 py-3">{p.description}</td>
                 <td className="px-4 py-3">₹{p.price}</td>
-                <td className="px-4 py-3">{p.status}</td>
+                <td className="px-4 py-3">{p.offer}</td>
+                <td className="px-4 py-3">{p.colors?.join(', ')}</td>
+                <td className="px-4 py-3">{p.quantity}</td>
+                <td className="px-4 py-3">{p.category}</td>
                 <td className="px-4 py-3 flex gap-2">
                   <button className="text-blue-600 hover:text-blue-800" onClick={() => setEditProduct(p)} title="Edit"><FiEdit /></button>
                   <button className="text-red-600 hover:text-red-800" onClick={() => deleteProduct(p.id)} title="Delete"><FiTrash2 /></button>

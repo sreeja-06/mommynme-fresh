@@ -2,11 +2,11 @@ import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 import logging
-from contact import contact_bp
-from best_seller import best_seller_bp
-from category import category_bp
-from products import products_bp
-from auth import auth_bp
+from routes.contact import contact_bp
+from routes.best_seller import best_seller_bp
+from routes.category import category_bp
+from routes.products import products_bp
+from routes.auth import auth_bp
 
 # Load environment variables from .env file
 from dotenv import load_dotenv

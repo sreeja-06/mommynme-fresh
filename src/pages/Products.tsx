@@ -17,6 +17,7 @@ interface Product {
   category: string;
   description: string;
   image: string;
+  image_url?: string;  // Add this field
   img2?: string;
   img3?: string;
   created_at: string;
@@ -71,18 +72,77 @@ export default function Products() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Move backendKeyToDisplay to useMemo to avoid dependency issues
+  const { backendKeyToDisplay, allBackendKeys } = useMemo(() => {
+    const mapping: Record<string, string> = {
+      bags_purse: "Bags and Purse",
+      earrings: "Earrings",
+      flower_bouquet: "Flower Bouquet",
+      flower_pots: "Flower Pots",
+      hair_accessories: "Hair Accessories",
+      keychains_plushies: "Keychains and Plushies",
+      mirror: "Mirror"
+    };
+    return {
+      backendKeyToDisplay: mapping,
+      allBackendKeys: Object.keys(mapping)
+    };
+  }, []);
+
   useEffect(() => {
     if (categoryFromQuery) {
-      setSelectedCategories([categoryFromQuery]);
+      // Find the backend key by comparing display names
+      const backendKey = Object.entries(backendKeyToDisplay).find(
+        ([, display]) => display.toLowerCase() === categoryFromQuery.toLowerCase()
+      )?.[0] || categoryFromQuery;
+      setSelectedCategories([backendKey]);
     }
-  }, [categoryFromQuery]);
+  }, [categoryFromQuery, backendKeyToDisplay]);
 
-  const handleSearch = useCallback(
-    debounce((query: string) => {
-      setSearchQuery(query);
-    }, 300),
+  // Build a flat list of all products, assigning the table name as category
+  const allProducts: Product[] = useMemo(() => {
+    return Object.entries(products).flatMap(([table, items]) =>
+      (items || []).map(item => ({
+        ...item,
+        category: table, // Assign table name for filtering
+        image: item.image || item.image_url || "",
+        colors: item.colors || []
+      }))
+    );
+  }, [products]);
+
+  // Filtering logic: now category filter works as expected
+  const filteredProducts = useMemo(() => {
+    return allProducts
+      .filter((product) => {
+        const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.category);
+        const matchesPrice = product.price <= priceRange;
+        return matchesSearch && matchesCategory && matchesPrice;
+      })
+      .sort((a, b) => {
+        switch (sortOption) {
+          case "price-low-to-high": return a.price - b.price;
+          case "price-high-to-low": return b.price - a.price;
+          case "newest-first":
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          default: return 0;
+        }
+      });
+  }, [allProducts, searchQuery, selectedCategories, priceRange, sortOption]);
+
+  // Fix the search handler implementation
+  const debouncedSearch = useMemo(
+    () => debounce((query: string) => setSearchQuery(query), 300),
     []
   );
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   const handleColorSelect = (productId: string, color: string) => {
     setSelectedColors(prev => ({ ...prev, [productId]: color }));
@@ -97,96 +157,19 @@ export default function Products() {
     setIsModalOpen(false);
   }, []);
 
-  // Category list for filters (should match API keys)
-  const [categoryList, setCategoryList] = useState<string[]>([]);
-
-  useEffect(() => {
-    // Fetch categories from backend
-    fetch('http://localhost:5000/categories')
-      .then(async (res) => {
-        if (!res.ok) throw new Error('Failed to fetch categories');
-        const data = await res.json();
-        setCategoryList(data.map((cat: { name: string }) => cat.name));
-      })
-      .catch(() => {
-        // fallback to hardcoded if backend fails
-        setCategoryList([
-          "Earrings",
-          "Hair Accessories",
-          "Keychains and Plushies",
-          "Flower Bouquet",
-          "Flower Pots",
-          "Mirror",
-          "Bags and Purse"
-        ]);
-      });
-  }, []);
-
-  // Map UI category names to API keys
-  const categoryKeyMap: Record<string, string> = {
-    "Earrings": "earrings",
-    "Hair accessories": "hair_accessories",
-    "Keychains and Plushies": "keychains_plushies",
-    "Flower Bouquet": "flower_bouquet",
-    "Flower Pots": "flower_pots",
-    "Mirror": "mirror",
-    "Bags and Purse": "bags_purse"
-  };
-
-  // Flatten and filter products for grid rendering
-  const filteredProducts = useMemo(() => {
-    let result: Product[] = Object.entries(products).flatMap(([category, items]) =>
-      items.map(item => ({ ...item, category }))
-    );
-    if (selectedCategories.length > 0) {
-      result = result.filter(product =>
-        selectedCategories.includes(
-          // Map API key to UI category for comparison
-          Object.entries(categoryKeyMap).find(([, v]) => v === product.category)?.[0] || product.category
-        )
-      );
-    }
-    return result
-      .filter((product) => {
-        const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesCategory =
-          selectedCategories.length === 0 ||
-          selectedCategories.includes(
-            Object.entries(categoryKeyMap).find(([, v]) => v === product.category)?.[0] || product.category
-          );
-        const matchesPrice = product.price <= priceRange;
-        return matchesSearch && matchesCategory && matchesPrice;
-      })
-      .sort((a, b) => {
-        switch (sortOption) {
-          case "price-low-to-high": return a.price - b.price;
-          case "price-high-to-low": return b.price - a.price;
-          case "newest-first":
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-          default: return 0;
-        }
-      });
-  }, [products, searchQuery, selectedCategories, priceRange, sortOption]);
-
-  // Helper to get products for a UI category
-  const getProductsForCategory = (uiCategory: string) => {
-    const apiKey = categoryKeyMap[uiCategory];
-    return products[apiKey] || [];
-  };
-
   return (
-    <div style={{ backgroundColor: "#F6F6FB" }} className="min-h-screen py-12">
+    <div className="products-page min-h-screen py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row gap-8">
           {/* Filters Sidebar */}
           <aside
-            className={`
-              w-full md:w-72 bg-white rounded-2xl shadow-lg p-0 md:p-6 h-fit
+            className={
+              `filter-sidebar w-full md:w-72 bg-white rounded-2xl shadow-lg p-0 md:p-6 h-fit
               transition-transform duration-300
-              ${showFilters ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
               fixed md:static top-0 left-0 z-30 md:z-auto md:relative
-              md:block
-            `}
+              md:block ` +
+              (showFilters ? "translate-x-0 " : "-translate-x-full md:translate-x-0 ")
+            }
             style={{ maxWidth: "20rem" }}
           >
             <div className="md:hidden flex justify-between items-center px-6 py-4 border-b">
@@ -212,21 +195,21 @@ export default function Products() {
                   </svg>
                 </summary>
                 <div className="px-6 pb-4 space-y-2">
-                  {categoryList.map((cat) => (
-                    <label key={cat} className="flex items-center cursor-pointer">
+                  {allBackendKeys.map((key) => (
+                    <label key={key} className="flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={selectedCategories.includes(cat)}
+                        checked={selectedCategories.includes(key)}
                         onChange={() => {
                           setSelectedCategories((prev) =>
-                            prev.includes(cat)
-                              ? prev.filter((c) => c !== cat)
-                              : [...prev, cat]
+                            prev.includes(key)
+                              ? prev.filter((c) => c !== key)
+                              : [...prev, key]
                           );
                         }}
                         className="form-checkbox h-4 w-4 text-purple-600 transition duration-150"
                       />
-                      <span className="ml-2 text-gray-700">{cat}</span>
+                      <span className="ml-2 text-gray-700">{backendKeyToDisplay[key]}</span>
                     </label>
                   ))}
                 </div>
@@ -247,6 +230,8 @@ export default function Products() {
                     value={priceRange}
                     onChange={(e) => setPriceRange(Number(e.target.value))}
                     className="w-full accent-purple-600"
+                    title="Price range slider"
+                    aria-label="Price range slider"
                   />
                   <div className="flex justify-between text-sm text-gray-600 mt-1">
                     <span>₹0</span>
@@ -271,8 +256,10 @@ export default function Products() {
                 <input
                   type="text"
                   placeholder="Search products..."
-                  onChange={(e) => handleSearch(e.target.value)}
+                  onChange={(e) => debouncedSearch(e.target.value)}
                   className="w-full pl-12 pr-4 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 text-base bg-gray-50 transition"
+                  title="Search products"
+                  aria-label="Search products"
                 />
                 <Search className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -280,6 +267,8 @@ export default function Products() {
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
                 className="px-4 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 bg-gray-50 text-base transition"
+                title="Sort products"
+                aria-label="Sort products"
               >
                 <option value="featured">Sort by: Featured</option>
                 <option value="price-low-to-high">Price: Low to High</option>
@@ -299,150 +288,113 @@ export default function Products() {
               </div>
             ) : (
               <div className="space-y-10">
-                {categoryList.map(category => {
-                  const apiKey = categoryKeyMap[category];
-                  // Filtered products for this category
-                  const categoryProducts = (products[apiKey] || []).filter(product => {
-                    // Apply all filters for this category section
-                    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-                    const matchesCategory =
-                      selectedCategories.length === 0 ||
-                      selectedCategories.includes(category);
-                    const matchesPrice = product.price <= priceRange;
-                    return matchesSearch && matchesCategory && matchesPrice;
-                  }).sort((a, b) => {
-                    switch (sortOption) {
-                      case "price-low-to-high": return a.price - b.price;
-                      case "price-high-to-low": return b.price - a.price;
-                      case "newest-first":
-                        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-                      default: return 0;
-                    }
-                  });
-
-                  // Hide empty categories if no products match
-                  if (categoryProducts.length === 0) return null;
-
-                  return (
-                    <section key={category}>
-                      <h2 className="text-2xl font-bold mb-6 tracking-tight text-gray-900">{category.replace('_', ' ')}</h2>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
-                        {categoryProducts.map((product: Product, idx: number) => (
-                          <div
-                            key={product.id}
-                            className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-200 overflow-hidden flex flex-col h-full group border border-transparent hover:border-purple-200"
+                <section>
+                  <h2 className="text-2xl font-bold mb-6 tracking-tight text-gray-900">All Products</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
+                    {filteredProducts.map((product: Product) => (
+                      <div
+                        key={product.id}
+                        className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-200 overflow-hidden flex flex-col h-full group border border-transparent hover:border-purple-200"
+                      >
+                        {/* Product Image Slider */}
+                        <div className="relative aspect-[4/3] bg-gray-100">
+                          <Swiper
+                            modules={[Navigation, Pagination]}
+                            navigation
+                            pagination={{ clickable: true }}
+                            className="swiper-container h-full"
+                            style={{ borderRadius: "1rem 1rem 0 0" }}
                           >
-                            {/* Product Image Slider */}
-                            <div className="relative aspect-[4/3] bg-gray-100">
-                              <Swiper
-                                modules={[Navigation, Pagination]}
-                                navigation
-                                pagination={{ clickable: true }}
-                                className="h-full"
-                                style={{ borderRadius: "1rem 1rem 0 0" }}
-                              >
-                                <SwiperSlide>
-                                  <img
-                                    src={product.image}
-                                    alt={product.name}
-                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                    style={{ aspectRatio: "4/3" }}
-                                  />
-                                </SwiperSlide>
-                                {product.images && product.images.length > 0 && product.images.map((img: string, idx: number) => (
-                                  <SwiperSlide key={idx}>
-                                    <img
-                                      src={img}
-                                      alt={`${product.name} - ${idx + 2}`}
-                                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                      style={{ aspectRatio: "4/3" }}
-                                    />
-                                  </SwiperSlide>
-                                ))}
-                              </Swiper>
-                              {product.images && product.images.length > 0 && (
-                                <button
-                                  className="absolute bottom-2 right-2 bg-white/80 text-purple-600 px-3 py-1 rounded-full text-xs font-medium shadow hover:bg-purple-600 hover:text-white transition"
-                                  onClick={() => handleViewMoreImages([product.image, ...(product.images ?? [])])}
-                                  tabIndex={0}
-                                >
-                                  + View Images
-                                </button>
-                              )}
-                            </div>
-                            {/* Product Details */}
-                            <div className="p-5 flex flex-col flex-grow">
-                              <div className="flex justify-between items-start mb-2">
-                                <h3 className="text-lg font-semibold text-gray-900 leading-tight">{product.name}</h3>
-                                {product.offer && (
-                                  <span className="bg-red-50 text-red-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-red-200">
-                                    {product.offer}% OFF
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
-                              {/* Color Options */}
-                              {product.colors && product.colors.length > 0 && (
-                                <div className="mb-4">
-                                  <p className="text-xs text-gray-500 mb-1">Colors:</p>
-                                  <div className="flex gap-2">
-                                    {product.colors.map((color: string) => (
-                                      <button
-                                        key={color}
-                                        type="button"
-                                        className={`
-                                          w-7 h-7 rounded-full border-2 flex-shrink-0
-                                          transition
-                                          focus:outline-none focus:ring-2 focus:ring-purple-400
-                                          ${selectedColors[product.id] === color
-                                            ? "border-purple-600 ring-2 ring-purple-200"
-                                            : "border-gray-300"}
-                                          hover:scale-110
-                                        `}
-                                        style={{ backgroundColor: colorPalette[color] }}
-                                        onClick={() => handleColorSelect(product.id, color)}
-                                        aria-label={color}
-                                      >
-                                        {selectedColors[product.id] === color && (
-                                          <svg className="w-4 h-4 m-auto text-white drop-shadow" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                          </svg>
-                                        )}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              <div className="mt-auto flex items-end gap-2">
-                                <span className="font-bold text-xl text-purple-700">
-                                  ₹{Number(product.price)?.toFixed(2) ?? '0.00'}
-                                </span>
-                                {product.offer && (
-                                  <span className="text-sm text-gray-400 line-through">
-                                    ₹{(product.price / (1 - Number(product.offer) / 100)).toFixed(2)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                            <SwiperSlide>
+                              <img
+                                src={product.image_url ? product.image_url : "/placeholder.png"}
+                                alt={product.name}
+                                className="product-image w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                style={{ aspectRatio: "4/3" }}
+                                onError={e => { (e.target as HTMLImageElement).src = '/placeholder.png'; }}
+                              />
+                            </SwiperSlide>
+                            {product.images && product.images.length > 0 && product.images.map((img: string, idx: number) => (
+                              <SwiperSlide key={idx}>
+                                <img
+                                  src={img}
+                                  alt={`${product.name} - ${idx + 2}`}
+                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                  style={{ aspectRatio: "4/3" }}
+                                  onError={e => { (e.target as HTMLImageElement).src = '/placeholder.png'; }}
+                                />
+                              </SwiperSlide>
+                            ))}
+                          </Swiper>
+                          {product.images && product.images.length > 0 && (
+                            <button
+                              className="absolute bottom-2 right-2 bg-white/80 text-purple-600 px-3 py-1 rounded-full text-xs font-medium shadow hover:bg-purple-600 hover:text-white transition"
+                              onClick={() => handleViewMoreImages([product.image_url || "/placeholder.png", ...(product.images ?? [])])}
+                              tabIndex={0}
+                            >
+                              + View Images
+                            </button>
+                          )}
+                        </div>
+                        {/* Product Details */}
+                        <div className="p-5 flex flex-col flex-grow">
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900 leading-tight">{product.name}</h3>
+                            {product.offer && (
+                              <span className="bg-red-50 text-red-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-red-200">
+                                {product.offer}% OFF
+                              </span>
+                            )}
                           </div>
-                        ))}
+                          <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
+                          {/* Color Options */}
+                          {product.colors && product.colors.length > 0 && (
+                            <div className="mb-4">
+                              <p className="text-xs text-gray-500 mb-1">Colors:</p>
+                              <div className="flex gap-2">
+                                {product.colors.map((color: string) => (
+                                  <button
+                                    key={color}
+                                    type="button"
+                                    className={`
+                                      w-7 h-7 rounded-full border-2 flex-shrink-0
+                                      transition
+                                      focus:outline-none focus:ring-2 focus:ring-purple-400
+                                      ${selectedColors[product.id] === color
+                                        ? "border-purple-600 ring-2 ring-purple-200"
+                                        : "border-gray-300"}
+                                      hover:scale-110
+                                    `}
+                                    style={{ backgroundColor: colorPalette[color] }}
+                                    onClick={() => handleColorSelect(product.id, color)}
+                                    aria-label={color}
+                                  >
+                                    {selectedColors[product.id] === color && (
+                                      <svg className="w-4 h-4 m-auto text-white drop-shadow" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div className="mt-auto flex items-end gap-2">
+                            <span className="font-bold text-xl text-purple-700">
+                              ₹{Number(product.price)?.toFixed(2) ?? '0.00'}
+                            </span>
+                            {product.offer && (
+                              <span className="text-sm text-gray-400 line-through">
+                                ₹{(product.price / (1 - Number(product.offer) / 100)).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </section>
-                  );
-                })}
-                {/* If no products match any category */}
-                {categoryList.every(category => {
-                  const apiKey = categoryKeyMap[category];
-                  const categoryProducts = (products[apiKey] || []).filter(product => {
-                    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-                    const matchesCategory =
-                      selectedCategories.length === 0 ||
-                      selectedCategories.includes(category);
-                    const matchesPrice = product.price <= priceRange;
-                    return matchesSearch && matchesCategory && matchesPrice;
-                  });
-                  return categoryProducts.length === 0;
-                }) && (
+                    ))}
+                  </div>
+                </section>
+                {filteredProducts.length === 0 && (
                   <div className="flex justify-center items-center py-20">
                     <span className="text-gray-500 text-lg">No products found.</span>
                   </div>
@@ -454,6 +406,7 @@ export default function Products() {
               <ImageModal
                 images={selectedProductImages}
                 onClose={closeModal}
+                isOpen={isModalOpen}
               />
             )}
           </main>

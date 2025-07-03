@@ -25,3 +25,20 @@
   transform: scale(1.1);
   box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
 }
+
+/* Slider Styles */
+.products-page {
+  background-color: #F6F6FB;
+}
+
+.filter-sidebar {
+  max-width: 20rem;
+}
+
+.product-image {
+  aspect-ratio: 4/3;
+}
+
+.swiper-container {
+  border-radius: 1rem 1rem 0 0;
+}
