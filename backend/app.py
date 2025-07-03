@@ -5,7 +5,7 @@ import logging
 from routes.contact import contact_bp
 from routes.best_seller import best_seller_bp
 from routes.category import category_bp
-from routes.products import products_bp
+from routes.products import products_bp, serve_back_assets
 from routes.auth import auth_bp
 
 # Load environment variables from .env file
@@ -30,5 +30,7 @@ app.register_blueprint(best_seller_bp)
 app.register_blueprint(category_bp)
 app.register_blueprint(products_bp)
 app.register_blueprint(auth_bp)
+
+
 if __name__ == '__main__':
     app.run(debug=True)
