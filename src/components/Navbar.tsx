@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import icon from '../assets/images/icon.png';
-import { Instagram, ShoppingCart, User } from 'lucide-react';
+import { Instagram, ShoppingCart, User, Menu, X } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 
 const NAV_ITEMS = [
@@ -17,6 +17,7 @@ export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -50,7 +51,7 @@ export default function Navbar() {
 
   return (
     <nav className={`w-full rounded-t-xl px-4 py-2 fixed left-0 z-50 top-10 transition-colors duration-300 ${scrolled ? 'bg-transparent backdrop-blur' : 'bg-white'}`}>
-      <div className="max-w-7xl mx-auto flex  justify-between">
+      <div className="max-w-7xl mx-auto flex justify-between items-center">
         {/* Logo & Title */}
         <div className="flex items-center space-x-4">
           <div className="rounded-full shadow-lg bg-white p-2">
@@ -61,8 +62,17 @@ export default function Navbar() {
           </span>
         </div>
 
-        {/* Navigation */}
-        <div className="flex items-right space-x-1 bg-glass-100 backdrop-blur rounded-full shadow-md px-4 py-2 ">
+        {/* Hamburger for mobile */}
+        <button
+          className="md:hidden ml-2 p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-[#8f6fd7]"
+          onClick={() => setMenuOpen((prev) => !prev)}
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+        >
+          {menuOpen ? <X className="w-7 h-7 text-[#8f6fd7]" /> : <Menu className="w-7 h-7 text-[#8f6fd7]" />}
+        </button>
+
+        {/* Navigation - desktop */}
+        <div className="hidden md:flex items-center space-x-1 bg-glass-100 backdrop-blur rounded-full shadow-md px-4 py-2">
           {NAV_ITEMS.map(({ path, label }) => (
             <Link
               key={path}
@@ -90,7 +100,6 @@ export default function Navbar() {
           >
             <Instagram className="w-6 h-6" />
           </a>
-          
           {loading ? (
             <div className="w-6 h-6 animate-pulse bg-purple-200 rounded-full"></div>
           ) : isLoggedIn ? (
@@ -112,6 +121,29 @@ export default function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Mobile menu dropdown */}
+      {menuOpen && (
+        <div className="md:hidden absolute left-0 right-0 mt-2 bg-white shadow-lg rounded-b-xl z-40 animate-fade-in">
+          <div className="flex flex-col items-center py-4 space-y-2">
+            {NAV_ITEMS.map(({ path, label }) => (
+              <Link
+                key={path}
+                to={path}
+                className={`w-full text-center px-4 py-2 rounded-full transition-colors ${
+                  isActive(path)
+                    ? 'bg-[#8f6fd7] text-white font-bold shadow'
+                    : 'text-gray-600 hover:text-[#8f6fd7]'
+                }`}
+                aria-current={isActive(path) ? "page" : undefined}
+                onClick={() => setMenuOpen(false)}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
