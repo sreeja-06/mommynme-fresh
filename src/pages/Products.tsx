@@ -40,6 +40,8 @@ export default function Products() {
   const [selectedProductImages, setSelectedProductImages] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedColors, setSelectedColors] = useState<Record<string, string>>({});
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState<string>("");
 
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
@@ -156,6 +158,29 @@ export default function Products() {
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
   }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    let uploadedImageUrl = imageUrl;
+    if (selectedImage) {
+      const formData = new FormData();
+      formData.append('image', selectedImage);
+      const res = await fetch('http://localhost:5000/products/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        uploadedImageUrl = data.url;
+        setImageUrl(data.url);
+      } else {
+        alert('Image upload failed');
+        return;
+      }
+    }
+    // Now include uploadedImageUrl in your product creation/update request
+    // e.g., { ...otherFields, image_url: uploadedImageUrl }
+  };
 
   return (
     <div className="products-page min-h-screen py-12">
@@ -306,18 +331,27 @@ export default function Products() {
                             style={{ borderRadius: "1rem 1rem 0 0" }}
                           >
                             <SwiperSlide>
-                              <img
-                                src={product.image_url ? product.image_url : "/placeholder.png"}
-                                alt={product.name}
-                                className="product-image w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                style={{ aspectRatio: "4/3" }}
-                                onError={e => { (e.target as HTMLImageElement).src = '/placeholder.png'; }}
-                              />
+                              {(() => {
+                                const mainImage = product.image_url && product.image_url.trim() !== ""
+                                  ? (product.image_url.startsWith('/') ? product.image_url : `/${product.image_url}`)
+                                  : (product.images && product.images.length > 0
+                                      ? (product.images[0].startsWith('/') ? product.images[0] : `/${product.images[0]}`)
+                                      : "/placeholder.png");
+                                return (
+                                  <img
+                                    src={mainImage}
+                                    alt={product.name}
+                                    className="product-image w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    style={{ aspectRatio: "4/3" }}
+                                    onError={e => { (e.target as HTMLImageElement).src = '/placeholder.png'; }}
+                                  />
+                                );
+                              })()}
                             </SwiperSlide>
                             {product.images && product.images.length > 0 && product.images.map((img: string, idx: number) => (
                               <SwiperSlide key={idx}>
                                 <img
-                                  src={img}
+                                  src={img.startsWith('/') ? img : `/${img}`}
                                   alt={`${product.name} - ${idx + 2}`}
                                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                   style={{ aspectRatio: "4/3" }}
@@ -329,7 +363,10 @@ export default function Products() {
                           {product.images && product.images.length > 0 && (
                             <button
                               className="absolute bottom-2 right-2 bg-white/80 text-purple-600 px-3 py-1 rounded-full text-xs font-medium shadow hover:bg-purple-600 hover:text-white transition"
-                              onClick={() => handleViewMoreImages([product.image_url || "/placeholder.png", ...(product.images ?? [])])}
+                              onClick={() => handleViewMoreImages([
+                                product.image_url ? (product.image_url.startsWith('/') ? product.image_url : `/${product.image_url}`) : "/placeholder.png",
+                                ...((product.images ?? []).map(img => img.startsWith('/') ? img : `/${img}`))
+                              ])}
                               tabIndex={0}
                             >
                               + View Images

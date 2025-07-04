@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import icon from '../assets/images/icon.png';
-import { Instagram, ShoppingCart, User, Menu, X } from 'lucide-react';
+import { Instagram, User, Menu, X } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Home' },
   { path: '/products', label: 'Catalogue' },
+  //{ path: '/account', label: 'My Account' },
   { path: '/about', label: 'About' },
   { path: '/contact', label: 'Contact' },
 ] as const;

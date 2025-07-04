@@ -1,8 +1,9 @@
-from flask import Blueprint, jsonify, request, send_from_directory
+from flask import Blueprint, jsonify, request, send_from_directory, current_app
 from psycopg2 import sql
 import logging
 import os
 from db import cursor
+from werkzeug.utils import secure_filename
 
 products_bp = Blueprint('products', __name__)
 
@@ -13,6 +14,8 @@ TABLES = [
 ]
 
 logger = logging.getLogger(__name__)
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def process_image_urls(image_urls):
     """
@@ -36,6 +39,9 @@ def process_image_urls(image_urls):
             processed.append(url)
     return processed
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 @products_bp.route('/products', methods=['GET'])
 def get_all_products():
     data = {}
@@ -53,8 +59,10 @@ def get_all_products():
                 if 'image_urls' in prod and prod['image_urls']:
                     images = process_image_urls(prod['image_urls'])
                 elif 'image_url' in prod and prod['image_url']:
-                    images = [prod['image_url']]
+                    images = process_image_urls(prod['image_url']) if ',' in prod['image_url'] else [f"back_assets/{prod['image_url']}"]
                 prod['images'] = images
+                # Always set image_url to the first image if available
+                prod['image_url'] = images[0] if images else ''
                 products.append(prod)
             data[table] = products
         return jsonify(data)
@@ -191,10 +199,33 @@ def count_all_products():
         logger.error(f"Error counting products: {e}", exc_info=True)
         return jsonify({'error': 'Failed to count products'}), 500
 
-@products_bp.route('/back_assets/<path:filename>')
+@products_bp.route('/back_assets/<path:filename>',methods=['GET'])
 def serve_back_assets(filename):
     """
     Serves static files from the back_assets directory.
+    Logs the requested file and returns a 404 if not found.
     """
     back_assets_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'back_assets')
+    file_path = os.path.join(back_assets_dir, filename)
+    if not os.path.isfile(file_path):
+        logger.error(f"File not found: {file_path}")
+        return jsonify({'error': f'File not found: {filename}'}), 404
+    logger.info(f"Serving file: {file_path}")
     return send_from_directory(back_assets_dir, filename)
+
+@products_bp.route('/products/upload-image', methods=['POST'])
+def upload_product_image():
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image part in the request'}), 400
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        upload_folder = os.path.join(current_app.root_path, 'back_assets')
+        os.makedirs(upload_folder, exist_ok=True)
+        file.save(os.path.join(upload_folder, filename))
+        url = f'/back_assets/{filename}'
+        return jsonify({'message': 'Image uploaded successfully', 'url': url}), 201
+    else:
+        return jsonify({'error': 'Invalid file type'}), 400
